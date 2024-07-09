@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "express": "^4.19.2",
+    "tsc": "^2.0.4",
     "ytmusic-api": "^5.2.2"
   },
   "devDependencies": {
