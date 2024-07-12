@@ -14,42 +14,36 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const ytmusic_api_1 = __importDefault(require("ytmusic-api"));
-const { distance, closest } = require('fastest-levenshtein');
-// Initialize the YouTube Music API
+const fastest_levenshtein_1 = require("fastest-levenshtein");
 function handleNextYtSong(query, officialSongName) {
     return __awaiter(this, void 0, void 0, function* () {
         const ytmusic = new ytmusic_api_1.default();
         yield ytmusic.initialize( /* Optional: Custom cookies */);
         try {
-            // Search for the song
             const results = yield ytmusic.searchSongs(query);
-            // console.log(results);
-            // Filter out instrumental and other non-desired tracks
             const filteredResults = results.filter(result => {
                 const lowerTitle = result.name.toLowerCase();
                 return !lowerTitle.includes('instrumental') && !lowerTitle.includes('karaoke') && !lowerTitle.includes('cover');
             });
             const processedResults = filteredResults.map(result => {
-                // Split the name at the first parenthesis and take the first part
-                let modifiedName = result.name.split('(')[0].trim();
-                // Convert to lowercase
+                // Split the name at any non-letter character (excluding spaces)
+                let modifiedName = result.name.split(/[^ \p{L}]/u)[0].trim();
                 modifiedName = modifiedName.toLowerCase();
+                console.log(modifiedName);
                 return Object.assign(Object.assign({}, result), { name: modifiedName });
             });
             if (processedResults.length === 0) {
                 throw new Error('No relevant songs found');
             }
-            // Calculate the Levenshtein distance and find the closest match
             let closestMatch = processedResults[0];
-            let smallestDistance = distance(officialSongName.toLowerCase(), closestMatch.name.toLowerCase());
+            let smallestDistance = (0, fastest_levenshtein_1.distance)(officialSongName.toLowerCase(), closestMatch.name.toLowerCase());
             for (const result of processedResults) {
-                const currDistance = distance(officialSongName.toLowerCase(), result.name.toLowerCase());
+                const currDistance = (0, fastest_levenshtein_1.distance)(officialSongName.toLowerCase(), result.name.toLowerCase());
                 if (currDistance < smallestDistance) {
-                    smallestDistance = distance;
+                    smallestDistance = currDistance;
                     closestMatch = result;
                 }
             }
-            console.log('Closest match:', closestMatch);
             return closestMatch;
         }
         catch (error) {
@@ -70,16 +64,14 @@ app.use((req, res, next) => {
 });
 // Example endpoint to proxy requests to YouTube Music API
 app.get('/api/ytmusic', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    const query = req.query.q; // Assuming the query parameter is named 'q'
-    const songName = req.query.songName; // Assuming the song name parameter is named'songName'
-    console.log(query + ' ' + songName);
+    const query = req.query.q;
+    const songName = req.query.songName;
     if (!query) {
         return res.status(400).json({ error: 'Query parameter "q" is required' });
     }
     try {
         const response = yield handleNextYtSong(query, songName);
-        console.log(response);
-        res.json(response); // Send the response back to the client
+        res.json(response);
     }
     catch (error) {
         console.error('Error calling YouTube Music API:', error.message);
