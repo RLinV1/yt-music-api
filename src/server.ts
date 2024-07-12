@@ -96,8 +96,8 @@ app.get('/api/download', async (req: Request, res: Response) => {
   const url = req.query.url; // Replace with your video URL
 
   // Set response headers
-  res.header('Content-Disposition', 'attachment; filename="video.mp3"');
-  res.header('Content-Type', 'video/mp3');
+  res.header('Content-Disposition', 'attachment; filename="music.mp3"');
+  res.header('Content-Type', 'mp3');
 
   // Stream the video directly to the response
   try
