@@ -19,8 +19,14 @@ async function handleNextYtSong(query: string, officialSongName: string, officia
     });
 
     const processedResults = filteredResults.map(result => {
-      let modifiedName = result.name.split(/[\s,]+/).filter(part => part !== '"' && part !== "'").join(" ").trim().normalize('NFC').toLowerCase();
-      let modifiedArtist = result.artist.name.trim().normalize('NFC').toLowerCase();
+      let modifiedName = result.name
+      .split(/[\s,]+/) // Split by spaces or commas
+      .filter(part => part !== '"' && part !== "'") // Filter out unwanted parts
+      .join(" ") // Join the parts back together with a space
+      .replace(/[^a-zA-Z0-9&"' ]/g, '') // Allow only letters, numbers, spaces, & and quotation marks
+      .trim() // Trim any leading or trailing spaces
+      .normalize('NFC') // Normalize the string
+      .toLowerCase(); // Convert to lowercase      
 
       return {
         ...result,
