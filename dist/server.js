@@ -15,6 +15,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const ytmusic_api_1 = __importDefault(require("ytmusic-api"));
 const fastest_levenshtein_1 = require("fastest-levenshtein");
+const ytdl = require("@distube/ytdl-core");
+const fs = require('fs');
 function handleNextYtSong(query, officialSongName, officialArtistName) {
     return __awaiter(this, void 0, void 0, function* () {
         const ytmusic = new ytmusic_api_1.default();
@@ -39,7 +41,7 @@ function handleNextYtSong(query, officialSongName, officialArtistName) {
             const closestArtist = (0, fastest_levenshtein_1.closest)(officialArtistName.toLowerCase(), processedResults.map(result => result.artist));
             // Find the closest match based on both name and artist
             const closestMatch = processedResults.find(result => result.name === closestName && result.artist === closestArtist);
-            console.log(processedResults);
+            // console.log(processedResults)
             if (!closestMatch) {
                 throw new Error('No relevant song match found');
             }
@@ -47,6 +49,7 @@ function handleNextYtSong(query, officialSongName, officialArtistName) {
         }
         catch (error) {
             console.error('Error finding closest song match:', error);
+            console.log(results[0]);
             // Return the first item if an error occurs
             return results && results.length > 0 ? results[0] : null;
         }
@@ -67,7 +70,7 @@ app.get('/api/ytmusic', (req, res) => __awaiter(void 0, void 0, void 0, function
     const query = req.query.q;
     const songName = req.query.songName;
     const artistName = req.query.artistName;
-    console.log(songName + "\n" + artistName);
+    // console.log(songName + "\n" + artistName)
     if (!query || !artistName) {
         return res.status(400).json({ error: 'Query parameter "q" and "artistName" are required' });
     }
@@ -80,6 +83,30 @@ app.get('/api/ytmusic', (req, res) => __awaiter(void 0, void 0, void 0, function
         res.status(500).json({ error: 'Failed to fetch data from YouTube Music API' });
     }
 }));
+app.get('/api/download', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    const url = req.query.url; // Replace with your video URL
+    // Set response headers
+    res.header('Content-Disposition', 'attachment; filename="video.mp3"');
+    res.header('Content-Type', 'video/mp3');
+    // Stream the video directly to the response
+    try {
+        // Download the video to a temporary file
+        ytdl(url, {
+            quality: 'highest',
+            filter: 'audioonly',
+            format: 'mp3' // Choose the highest video quality
+        })
+            .pipe(res)
+            .on('finish', () => {
+            console.log("done downloading video");
+        });
+    }
+    catch (error) {
+        console.error('Error downloading:', error);
+        res.status(500).send('Error downloading video.');
+    }
+}));
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
+//localhost:8080/api/download?url=https://www.youtube.com/watch?v=-HV3wsLYQTc
