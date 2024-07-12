@@ -24,9 +24,10 @@ async function handleNextYtSong(query: string, officialSongName: string, officia
       .filter(part => part !== '"' && part !== "'") // Filter out unwanted parts
       .join(" ") // Join the parts back together with a space
       .replace(/[^a-zA-Z0-9&"' ]/g, '') // Allow only letters, numbers, spaces, & and quotation marks
+      .replace(/&/g, 'and') // Replace ampersands with 'and'
       .trim() // Trim any leading or trailing spaces
       .normalize('NFC') // Normalize the string
-      .toLowerCase(); // Convert to lowercase      
+      .toLowerCase(); // Convert to lowercase    
 
       return {
         ...result,
