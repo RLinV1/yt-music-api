@@ -15,40 +15,39 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const ytmusic_api_1 = __importDefault(require("ytmusic-api"));
 const fastest_levenshtein_1 = require("fastest-levenshtein");
-function handleNextYtSong(query, officialSongName) {
+function handleNextYtSong(query, officialSongName, officialArtistName) {
     return __awaiter(this, void 0, void 0, function* () {
         const ytmusic = new ytmusic_api_1.default();
         yield ytmusic.initialize( /* Optional: Custom cookies */);
+        let results = yield ytmusic.searchSongs(query);
         try {
-            const results = yield ytmusic.searchSongs(query);
             const filteredResults = results.filter(result => {
                 const lowerTitle = result.name.toLowerCase();
                 return !lowerTitle.includes('instrumental') && !lowerTitle.includes('karaoke') && !lowerTitle.includes('cover');
             });
             const processedResults = filteredResults.map(result => {
-                // Split the name at any non-letter character (excluding spaces)
-                let modifiedName = result.name.split(/[^ \p{L}]/u)[0].trim();
-                modifiedName = modifiedName.toLowerCase();
-                console.log(modifiedName);
-                return Object.assign(Object.assign({}, result), { name: modifiedName });
+                let modifiedName = result.name.split(/[^ \p{L}]/u)[0].trim().normalize('NFC').toLowerCase();
+                let modifiedArtist = result.artist.name.trim().normalize('NFC').toLowerCase();
+                return Object.assign(Object.assign({}, result), { name: modifiedName, artist: modifiedArtist });
             });
             if (processedResults.length === 0) {
                 throw new Error('No relevant songs found');
             }
-            let closestMatch = processedResults[0];
-            let smallestDistance = (0, fastest_levenshtein_1.distance)(officialSongName.toLowerCase(), closestMatch.name.toLowerCase());
-            for (const result of processedResults) {
-                const currDistance = (0, fastest_levenshtein_1.distance)(officialSongName.toLowerCase(), result.name.toLowerCase());
-                if (currDistance < smallestDistance) {
-                    smallestDistance = currDistance;
-                    closestMatch = result;
-                }
+            // Find closest match for song name
+            const closestName = (0, fastest_levenshtein_1.closest)(officialSongName.toLowerCase(), processedResults.map(result => result.name));
+            // Find closest match for artist name
+            const closestArtist = (0, fastest_levenshtein_1.closest)(officialArtistName.toLowerCase(), processedResults.map(result => result.artist));
+            // Find the closest match based on both name and artist
+            const closestMatch = processedResults.find(result => result.name === closestName && result.artist === closestArtist);
+            if (!closestMatch) {
+                throw new Error('No relevant song match found');
             }
             return closestMatch;
         }
         catch (error) {
             console.error('Error finding closest song match:', error);
-            return null;
+            // Return the first item if an error occurs
+            return results && results.length > 0 ? results[0] : null;
         }
     });
 }
@@ -66,11 +65,13 @@ app.use((req, res, next) => {
 app.get('/api/ytmusic', (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     const query = req.query.q;
     const songName = req.query.songName;
-    if (!query) {
-        return res.status(400).json({ error: 'Query parameter "q" is required' });
+    const artistName = req.query.artistName;
+    console.log(songName + "\n" + artistName);
+    if (!query || !artistName) {
+        return res.status(400).json({ error: 'Query parameter "q" and "artistName" are required' });
     }
     try {
-        const response = yield handleNextYtSong(query, songName);
+        const response = yield handleNextYtSong(query, songName, artistName);
         res.json(response);
     }
     catch (error) {
