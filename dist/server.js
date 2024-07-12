@@ -26,7 +26,7 @@ function handleNextYtSong(query, officialSongName, officialArtistName) {
                 return !lowerTitle.includes('instrumental') && !lowerTitle.includes('karaoke') && !lowerTitle.includes('cover');
             });
             const processedResults = filteredResults.map(result => {
-                let modifiedName = result.name.split(/[^ \p{L}]/u)[0].trim().normalize('NFC').toLowerCase();
+                let modifiedName = result.name.split(/[\s,]+/).filter(part => part !== '"' && part !== "'").join(" ").trim().normalize('NFC').toLowerCase();
                 let modifiedArtist = result.artist.name.trim().normalize('NFC').toLowerCase();
                 return Object.assign(Object.assign({}, result), { name: modifiedName, artist: modifiedArtist });
             });
@@ -39,6 +39,7 @@ function handleNextYtSong(query, officialSongName, officialArtistName) {
             const closestArtist = (0, fastest_levenshtein_1.closest)(officialArtistName.toLowerCase(), processedResults.map(result => result.artist));
             // Find the closest match based on both name and artist
             const closestMatch = processedResults.find(result => result.name === closestName && result.artist === closestArtist);
+            console.log(processedResults);
             if (!closestMatch) {
                 throw new Error('No relevant song match found');
             }
